@@ -1,5 +1,11 @@
 # Agent Runtime — a multi-agent development Canvas
 
+[![GitHub Copilot CLI](https://img.shields.io/badge/GitHub%20Copilot%20CLI-canvas%20extension-000?logo=githubcopilot&logoColor=white)](https://github.com/leestott/agent-runtime-canvas)
+[![Node.js](https://img.shields.io/badge/Node.js-built--ins%20only-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
+[![Dependencies](https://img.shields.io/badge/dependencies-zero-success)](#run-the-demo)
+[![Last commit](https://img.shields.io/github/last-commit/leestott/agent-runtime-canvas?logo=git&logoColor=white)](https://github.com/leestott/agent-runtime-canvas/commits/main)
+[![Stars](https://img.shields.io/github/stars/leestott/agent-runtime-canvas?style=flat&logo=github)](https://github.com/leestott/agent-runtime-canvas/stargazers)
+
 A GitHub Copilot CLI **canvas extension** that turns Canvas into a **runtime
 observability & control plane** for a multi-agent software system being designed,
 tested, and evolved in real time — *not* a static UI.
