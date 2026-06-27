@@ -49,6 +49,8 @@ function emptyModel(id) {
         requirement: "",
         status: "idle", // idle | running | paused
         version: 0,
+        activeAgentId: null,
+        activeTaskId: null,
         constraints: [],
         agents: [],
         tasks: [],
@@ -70,6 +72,8 @@ export class SystemStore extends EventEmitter {
         this.id = id;
         this.model = emptyModel(id);
         this._timer = null;
+        this._finishTimer = null;
+        this._dwellMs = 1100;
         this._saveQueued = false;
         this._file = path.join(ARTIFACT_DIR, `${sanitize(id)}.json`);
     }
@@ -174,6 +178,8 @@ export class SystemStore extends EventEmitter {
         this.model.edges = edges;
         this.model.artifacts = [];
         this.model.tests = [];
+        this.model.activeAgentId = null;
+        this.model.activeTaskId = null;
         this.model.state = {
             requirements: { value: req, updatedAt: now() },
         };
@@ -187,6 +193,7 @@ export class SystemStore extends EventEmitter {
     //       "reset" (back to pending).
     // -----------------------------------------------------------------------
     execute(mode = "step", opts = {}) {
+        const dwell = Math.max(250, Number(opts.intervalMs) || this._dwellMs || 1100);
         switch (mode) {
             case "reset":
                 this._stopTimer();
@@ -199,47 +206,65 @@ export class SystemStore extends EventEmitter {
                     a.currentTask = null;
                 }
                 this.model.artifacts = [];
+                this.model.activeAgentId = null;
+                this.model.activeTaskId = null;
                 this.model.status = "idle";
                 return this._commit("execute", "Execution reset to pending");
             case "pause":
                 this._stopTimer();
                 this.model.status = "paused";
+                // Roll any mid-flight task back to pending so it re-runs on resume.
+                for (const t of this.model.tasks) if (t.status === "running") t.status = "pending";
+                for (const a of this.model.agents) if (a.status === "working") { a.status = "idle"; a.currentTask = null; }
+                this.model.activeAgentId = null;
+                this.model.activeTaskId = null;
                 return this._commit("execute", "Execution paused");
             case "resume":
             case "run":
+                this._dwellMs = dwell;
                 this.model.status = "running";
                 this._commit("execute", mode === "resume" ? "Execution resumed" : "Execution started");
-                this._startTimer(opts.intervalMs || 900);
+                this._scheduleTick(0);
                 return this.summary();
             case "step":
-            default: {
-                const r = this._stepOnce();
-                return r;
-            }
+            default:
+                // One full, visible task: begin (running) → dwell → finish.
+                this._stopTimer();
+                this._runOneTask(dwell);
+                return this.summary();
         }
     }
 
-    _startTimer(intervalMs) {
+    // Drive the auto-run loop. Each tick advances exactly one task through its
+    // visible begin→finish lifecycle, so the active agent is observable.
+    _scheduleTick(delay) {
         this._stopTimer();
-        this._timer = setInterval(() => {
-            if (this.model.status !== "running") return this._stopTimer();
-            const ready = this._readyTask();
-            if (!ready) {
-                this.model.status = "idle";
-                this._stopTimer();
-                this._commit("execute", "Workflow complete — no ready tasks remain");
-                return;
-            }
-            this._stepOnce();
-        }, intervalMs);
+        this._timer = setTimeout(() => {
+            if (this.model.status !== "running") return;
+            const more = this._beginNext();
+            if (!more) return; // workflow settled (complete or blocked)
+            // After the running dwell, finish the in-flight task, then loop.
+            this._finishTimer = setTimeout(() => {
+                if (this.model.status !== "running") return;
+                this._finishActive();
+                this._scheduleTick(Math.round(this._dwellMs * 0.4));
+            }, this._dwellMs);
+            if (typeof this._finishTimer.unref === "function") this._finishTimer.unref();
+        }, Math.max(0, delay));
         if (typeof this._timer.unref === "function") this._timer.unref();
     }
 
+    // Manual single step: begin now, finish after the dwell.
+    _runOneTask(dwell) {
+        const began = this._beginNext();
+        if (!began) return;
+        this._finishTimer = setTimeout(() => this._finishActive(), dwell);
+        if (typeof this._finishTimer.unref === "function") this._finishTimer.unref();
+    }
+
     _stopTimer() {
-        if (this._timer) {
-            clearInterval(this._timer);
-            this._timer = null;
-        }
+        if (this._timer) { clearTimeout(this._timer); this._timer = null; }
+        if (this._finishTimer) { clearTimeout(this._finishTimer); this._finishTimer = null; }
     }
 
     _readyTask() {
@@ -253,10 +278,11 @@ export class SystemStore extends EventEmitter {
         );
     }
 
-    _stepOnce() {
+    // Phase 1: pick the next ready task and mark it + its agent active.
+    // Returns false (and settles the run) when nothing can start.
+    _beginNext() {
         const task = this._readyTask();
         if (!task) {
-            // Surface blocked tasks (deps failed) so the human can see why.
             const blocked = this.model.tasks.filter(
                 (t) => t.status === "pending" && t.deps.some((d) => {
                     const dep = this.model.tasks.find((x) => x.id === d);
@@ -264,31 +290,51 @@ export class SystemStore extends EventEmitter {
                 }),
             );
             for (const b of blocked) b.status = "blocked";
-            return this._commit("execute", blocked.length ? "No ready tasks — downstream blocked" : "No ready tasks");
+            this.model.activeAgentId = null;
+            this.model.activeTaskId = null;
+            if (this.model.status === "running") {
+                this.model.status = "idle";
+                this._stopTimer();
+            }
+            const remaining = this.model.tasks.some((t) => t.status === "pending" || t.status === "running");
+            this._commit(
+                blocked.length ? "error" : "execute",
+                blocked.length ? `${blocked.length} task(s) blocked by upstream failure` : (remaining ? "No ready tasks" : "Workflow complete ✓"),
+            );
+            return false;
         }
 
         const agent = this.model.agents.find((a) => a.id === task.agentId);
-        const shouldFail = this.model.injectedFailures.includes(task.key);
-
         task.status = "running";
+        this.model.activeTaskId = task.id;
+        this.model.activeAgentId = agent ? agent.id : null;
         if (agent) {
             agent.status = "working";
             agent.currentTask = task.title;
         }
-        this._commit("agent", `${task.agentName} → ${task.title}`, "running");
+        this._commit("agent", `▶ ${task.agentName} is working on “${task.title}”`, "running");
+        return true;
+    }
+
+    // Phase 2: complete the currently-running task (or fail it if injected).
+    _finishActive() {
+        const task = this.model.tasks.find((t) => t.id === this.model.activeTaskId) ||
+            this.model.tasks.find((t) => t.status === "running");
+        if (!task) return this.model;
+        const agent = this.model.agents.find((a) => a.id === task.agentId);
+        const shouldFail = this.model.injectedFailures.includes(task.key);
+
+        this.model.activeAgentId = null;
+        this.model.activeTaskId = null;
 
         if (shouldFail) {
             task.status = "failed";
             task.output = `Failed: injected constraint violated during "${task.title}".`;
-            if (agent) {
-                agent.status = "error";
-                agent.currentTask = null;
-            }
+            if (agent) { agent.status = "error"; agent.currentTask = null; }
             this.model.injectedFailures = this.model.injectedFailures.filter((k) => k !== task.key);
-            return this._commit("error", `${task.agentName} failed at ${task.title}`, task.output);
+            return this._commit("error", `✕ ${task.agentName} failed “${task.title}”`, task.output);
         }
 
-        // Produce an artifact and update shared state for each `writes` key.
         const artifact = {
             id: uid("art"),
             taskId: task.id,
@@ -300,17 +346,11 @@ export class SystemStore extends EventEmitter {
         };
         this.model.artifacts.unshift(artifact);
         task.output = artifact.name;
-
-        for (const key of task.writes) {
-            this._setStateInternal(key, synthState(key, task, this.model));
-        }
+        for (const key of task.writes) this._setStateInternal(key, synthState(key, task, this.model));
 
         task.status = "done";
-        if (agent) {
-            agent.status = "done";
-            agent.currentTask = null;
-        }
-        return this._commit("agent", `${task.agentName} completed ${task.title}`, artifact.name);
+        if (agent) { agent.status = "done"; agent.currentTask = null; }
+        return this._commit("agent", `✓ ${task.agentName} completed “${task.title}” → ${artifact.name}`, artifact.name);
     }
 
     // -----------------------------------------------------------------------
