@@ -206,6 +206,11 @@ export class SystemStore extends EventEmitter {
                     a.currentTask = null;
                 }
                 this.model.artifacts = [];
+                this.model.tests = [];
+                // Clear produced memory, preserving the requirement seed.
+                this.model.state = this.model.requirement
+                    ? { requirements: { value: this.model.requirement, updatedAt: now() } }
+                    : {};
                 this.model.activeAgentId = null;
                 this.model.activeTaskId = null;
                 this.model.status = "idle";
@@ -283,13 +288,21 @@ export class SystemStore extends EventEmitter {
     _beginNext() {
         const task = this._readyTask();
         if (!task) {
-            const blocked = this.model.tasks.filter(
-                (t) => t.status === "pending" && t.deps.some((d) => {
-                    const dep = this.model.tasks.find((x) => x.id === d);
-                    return dep && (dep.status === "failed" || dep.status === "blocked");
-                }),
-            );
-            for (const b of blocked) b.status = "blocked";
+            // Mark the whole transitively-blocked subtree (deps failed/blocked),
+            // iterating to a fixpoint so downstream tasks are flagged too.
+            let changed = true;
+            while (changed) {
+                changed = false;
+                for (const t of this.model.tasks) {
+                    if (t.status !== "pending") continue;
+                    const bad = t.deps.some((d) => {
+                        const dep = this.model.tasks.find((x) => x.id === d);
+                        return dep && (dep.status === "failed" || dep.status === "blocked");
+                    });
+                    if (bad) { t.status = "blocked"; changed = true; }
+                }
+            }
+            const blocked = this.model.tasks.filter((t) => t.status === "blocked");
             this.model.activeAgentId = null;
             this.model.activeTaskId = null;
             if (this.model.status === "running") {
