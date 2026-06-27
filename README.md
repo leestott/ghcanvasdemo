@@ -64,17 +64,68 @@ The agent co-creates and evolves the system by calling:
   ui.mjs          # iframe renderer (system view · validation · state · timeline)
 ```
 
-## Run it
+## Run the demo
 
-In the Copilot CLI / app with this repo as the workspace:
+### Prerequisites
 
-1. The extension is auto-discovered from `.github/extensions/`.
-2. Ask Copilot to **open the Agent Runtime canvas** (optionally with a requirement),
-   or open it from the canvas catalog.
-3. Use the panel controls, and/or ask the agent to `decompose_system`,
-   `execute_workflow`, and `validate_output`.
+- **GitHub Copilot CLI / app** with canvas support (the `canvas-renderer` capability).
+- This repository opened as the **workspace** (clone it, then open the folder).
+  No `npm install` is needed — `@github/copilot-sdk` is auto-resolved by the CLI and
+  the extension uses only Node's built-in modules.
 
-State persists per `documentId` under `~/.copilot/extensions/agent-runtime/artifacts/`.
+### 1. Load the extension
+
+The extension is auto-discovered from `.github/extensions/agent-runtime/` when the repo
+is your workspace. To confirm it loaded (or after editing it), reload extensions and
+inspect:
+
+- Reload: run the **reload extensions** command (or restart the session).
+- Verify: the **Agent Runtime** canvas appears in the canvas catalog / `<canvases>` list.
+
+If it shows as *failed*, inspect the extension's log (the inspect output prints the log
+path) — `stdout` is reserved for JSON-RPC, so all diagnostics go to that log.
+
+### 2. Open the canvas
+
+Ask Copilot to **open the Agent Runtime canvas**, optionally seeding a requirement:
+
+> Open the Agent Runtime canvas with the requirement "Add CSV export to the reports page".
+
+The panel opens on the right with seven sections (Requirement, Agents, Task Flow,
+Artifacts, Validation, Live State, Timeline).
+
+### 3. Walk the loop
+
+Drive it with the panel controls **and/or** by asking the agent to call the actions —
+both funnel through the same live model. The panel's control bar has **Step ▷**,
+**Run ▶** (also resumes from pause), **Pause ❚❚**, and **Reset ⟲**; the Validation panel
+has **Run tests ✓**; the Agents panel has **Inject failure ⚡**.
+
+1. **Decompose** — ask the agent to `decompose_system` (there's no panel button for
+   this) → 5 agents (Planner, Architect, Builder, Validator, Reviewer) and a 6-task
+   graph appear, all *pending*.
+2. **Execute** — click **Run ▶** (or `execute_workflow`) and watch the spotlight banner
+   track the active agent, the progress bar fill, and artifacts appear as each task
+   completes. Use **Pause ❚❚** / **Run ▶** to pause-resume, and **Step ▷** to advance one
+   task at a time.
+3. **Validate** — click **Run tests ✓** (or `validate_output`) → 5/5 tests pass with
+   expected-vs-actual reasoning.
+4. **Inject failure** — click **Inject failure ⚡** then **Reset ⟲** + **Run ▶**. The
+   `build` task fails, its downstream tasks (`validate`, `review`) go *blocked*, and
+   validation drops to 4/5.
+5. **Recover** — ask the agent to clear the injected failure (Reset does *not* clear it),
+   then **Reset ⟲** + **Run ▶** again → 6/6 done, validation back to 5/5. The Timeline
+   shows the whole before→after history.
+6. **Edit live** — change a constraint or a Live State value directly in the panel, or
+   ask the agent to `update_system_design` / `track_state`, then re-validate.
+
+### Tuning execution speed
+
+`execute_workflow` accepts an `intervalMs` (the visible dwell per task, default ~1100ms)
+so you can slow the run down for a presentation or speed it up for a quick check.
+
+State persists per `documentId` under `~/.copilot/extensions/agent-runtime/artifacts/`,
+so a reload or reopen resumes exactly where you left off.
 
 ## How it works
 
