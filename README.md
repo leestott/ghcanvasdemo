@@ -5,6 +5,7 @@
 [![Dependencies](https://img.shields.io/badge/dependencies-zero-success)](#run-the-demo)
 [![Last commit](https://img.shields.io/github/last-commit/leestott/agent-runtime-canvas?logo=git&logoColor=white)](https://github.com/leestott/agent-runtime-canvas/commits/main)
 [![Stars](https://img.shields.io/github/stars/leestott/agent-runtime-canvas?style=flat&logo=github)](https://github.com/leestott/agent-runtime-canvas/stargazers)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A GitHub Copilot CLI **canvas extension** that turns Canvas into a **runtime
 observability & control plane** for a multi-agent software system being designed,
@@ -149,3 +150,7 @@ so a reload or reopen resumes exactly where you left off.
 ---
 
 Built as a demonstration of the Copilot Canvas extension runtime.
+
+## License
+
+Released under the [MIT License](LICENSE).
