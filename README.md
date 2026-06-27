@@ -98,8 +98,8 @@ Artifacts, Validation, Live State, Timeline).
 
 Drive it with the panel controls **and/or** by asking the agent to call the actions —
 both funnel through the same live model. The panel's control bar has **Step ▷**,
-**Run ▶** (also resumes from pause), **Pause ❚❚**, and **Reset ⟲**; the Validation panel
-has **Run tests ✓**; the Agents panel has **Inject failure ⚡**.
+**Run ▶** (also resumes from pause), **Pause ❚❚**, **Inject failure ⚡**,
+**Clear failure ⌫**, and **Reset ⟲**; the Validation panel has **Run tests ✓**.
 
 1. **Decompose** — ask the agent to `decompose_system` (there's no panel button for
    this) → 5 agents (Planner, Architect, Builder, Validator, Reviewer) and a 6-task
@@ -113,9 +113,9 @@ has **Run tests ✓**; the Agents panel has **Inject failure ⚡**.
 4. **Inject failure** — click **Inject failure ⚡** then **Reset ⟲** + **Run ▶**. The
    `build` task fails, its downstream tasks (`validate`, `review`) go *blocked*, and
    validation drops to 4/5.
-5. **Recover** — ask the agent to clear the injected failure (Reset does *not* clear it),
-   then **Reset ⟲** + **Run ▶** again → 6/6 done, validation back to 5/5. The Timeline
-   shows the whole before→after history.
+5. **Recover** — click **Clear failure ⌫** (Reset alone does *not* clear an injected
+   failure), then **Reset ⟲** + **Run ▶** again → 6/6 done, validation back to 5/5. The
+   Timeline shows the whole before→after history.
 6. **Edit live** — change a constraint or a Live State value directly in the panel, or
    ask the agent to `update_system_design` / `track_state`, then re-validate.
 

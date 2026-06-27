@@ -215,6 +215,8 @@ textarea { resize: vertical; }
     <button id="btn-step" title="Run one task (visible)">Step ▷</button>
     <button id="btn-run" class="primary" title="Auto-run the workflow">Run ▶</button>
     <button id="btn-pause" title="Pause execution">Pause ❚❚</button>
+    <button id="btn-inject" class="danger" title="Inject a failure into the next pending task">Inject failure ⚡</button>
+    <button id="btn-clear-fail" title="Clear injected failures">Clear failure ⌫</button>
     <button id="btn-reset" title="Reset all tasks to pending">Reset ⟲</button>
   </div>
 </div>
@@ -251,10 +253,7 @@ textarea { resize: vertical; }
     </div>
 
     <div class="card">
-      <header><h2>Task Flow</h2><span id="tasks-count" class="count"></span>
-        <span class="spacer"></span>
-        <button id="btn-inject" class="danger" title="Inject a failure into the next pending task">Inject failure ⚡</button>
-      </header>
+      <header><h2>Task Flow</h2><span id="tasks-count" class="count"></span></header>
       <div class="body"><div id="flow" class="flow"></div></div>
     </div>
 
@@ -327,6 +326,11 @@ function render() {
 
   $("#btn-run").disabled = model.status === "running";
   $("#btn-pause").disabled = model.status !== "running";
+  const injected = (model.injectedFailures || []).length;
+  const hasPending = (model.tasks || []).some(x => x.status === "pending");
+  $("#btn-inject").disabled = !hasPending;
+  $("#btn-clear-fail").disabled = injected === 0;
+  $("#btn-clear-fail").textContent = injected ? ("Clear failure ⌫ ("+injected+")") : "Clear failure ⌫";
 }
 
 function renderProgress() {
@@ -504,6 +508,7 @@ $("#btn-pause").onclick = () => control("execute", { mode:"pause" });
 $("#btn-reset").onclick = () => control("execute", { mode:"reset" });
 $("#btn-validate").onclick = () => control("validate");
 $("#btn-inject").onclick = () => { const t=(model&&model.tasks||[]).find(x=>x.status==="pending"); if(t) control("inject_failure",{taskKey:t.key}); };
+$("#btn-clear-fail").onclick = () => control("clear_failures");
 $("#btn-save-req").onclick = () => control("set_requirement", { text: $("#req").value });
 $("#btn-add-constraint").onclick = () => { const v=$("#constraint-in").value.trim(); if(v){ control("add_constraint",{text:v}); $("#constraint-in").value=""; } };
 $("#constraint-in").addEventListener("keydown", e=>{ if(e.key==="Enter") $("#btn-add-constraint").click(); });
