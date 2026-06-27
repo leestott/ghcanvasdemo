@@ -9,7 +9,7 @@ developers and AI agents co-create, observe, and evolve a solution in real time.
 This post is a working theory of what
 <strong>GitHub Copilot App Canvas</strong> is actually <em>for</em>, grounded in a
 real, runnable demo you can clone today:
-<a href="https://github.com/leestott/ghcanvasdemo">leestott/ghcanvasdemo</a>.
+<a href="https://github.com/leestott/agent-runtime-canvas">leestott/agent-runtime-canvas</a>.
 </p>
 
 <p>
@@ -85,7 +85,7 @@ working Copilot CLI extension that renders exactly this loop.
 <h2>3. What we built: the Agent Runtime canvas</h2>
 
 <p>
-<a href="https://github.com/leestott/ghcanvasdemo">ghcanvasdemo</a> is a GitHub
+<a href="https://github.com/leestott/agent-runtime-canvas">agent-runtime-canvas</a> is a GitHub
 Copilot CLI <strong>canvas extension</strong> called <strong>Agent Runtime</strong>.
 It turns Canvas into a runtime observability and control plane for a multi-agent
 software system that is being designed, tested, and evolved in real time.
@@ -274,8 +274,8 @@ uses only built-in Node modules.
 <ol>
   <li>
     <strong>Clone and open the workspace.</strong>
-    <pre><code>git clone https://github.com/leestott/ghcanvasdemo.git
-cd ghcanvasdemo</code></pre>
+    <pre><code>git clone https://github.com/leestott/agent-runtime-canvas.git
+cd agent-runtime-canvas</code></pre>
     The extension auto-discovers from <code>.github/extensions/agent-runtime/</code>.
   </li>
   <li>
@@ -296,7 +296,7 @@ cd ghcanvasdemo</code></pre>
 State persists per <code>documentId</code> under
 <code>~/.copilot/extensions/agent-runtime/artifacts/</code>, so a reload resumes
 exactly where you left off. The companion
-<a href="https://github.com/leestott/ghcanvasdemo/blob/main/demoscript.md">demoscript.md</a>
+<a href="https://github.com/leestott/agent-runtime-canvas/blob/main/demoscript.md">demoscript.md</a>
 in the repo gives you a tight, timed walkthrough.
 </p>
 
@@ -402,9 +402,9 @@ In the spirit of building credibility rather than hype:
 
 <ul>
   <li>Clone and run the demo:
-      <a href="https://github.com/leestott/ghcanvasdemo">github.com/leestott/ghcanvasdemo</a>.</li>
+      <a href="https://github.com/leestott/agent-runtime-canvas">github.com/leestott/agent-runtime-canvas</a>.</li>
   <li>Read the extension source under
-      <a href="https://github.com/leestott/ghcanvasdemo/tree/main/.github/extensions/agent-runtime"><code>.github/extensions/agent-runtime/</code></a>
+      <a href="https://github.com/leestott/agent-runtime-canvas/tree/main/.github/extensions/agent-runtime"><code>.github/extensions/agent-runtime/</code></a>
       — start with <code>store.mjs</code>.</li>
   <li>Explore the building blocks: the
       <a href="https://github.com/github/copilot-sdk">GitHub Copilot SDK</a>, the
