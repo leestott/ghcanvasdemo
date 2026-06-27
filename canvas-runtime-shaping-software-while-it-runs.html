@@ -1,0 +1,419 @@
+<body>
+
+<h1>Canvas Is a Runtime, Not a UI: Shaping Software While It Runs</h1>
+
+<p>
+There is a quiet shift happening in how we build software with AI. We are moving
+from <em>writing static code</em> to <em>orchestrating living systems</em> — where
+developers and AI agents co-create, observe, and evolve a solution in real time.
+This post is a working theory of what
+<strong>GitHub Copilot App Canvas</strong> is actually <em>for</em>, grounded in a
+real, runnable demo you can clone today:
+<a href="https://github.com/leestott/ghcanvasdemo">leestott/ghcanvasdemo</a>.
+</p>
+
+<p>
+The headline claim, which the rest of this post defends with code:
+</p>
+
+<blockquote>
+<strong>Traditional UIs are for <em>using</em> software. Canvas is for <em>shaping</em>
+software while it runs.</strong>
+</blockquote>
+
+<hr />
+
+<h2>1. The misconception worth getting out of the way</h2>
+
+<p>
+The first instinct most engineers have when they see Canvas is to build a UI with
+it — a dashboard, a DevOps board, an admin panel. That is the wrong mental model,
+and it leads to disappointment. A Kanban board rendered in Canvas is just a worse
+version of a tool that already exists.
+</p>
+
+<p>
+Canvas is not where your <em>users</em> live. It is where your <em>system</em>
+becomes visible to you and to the AI while you are still figuring it out. The
+distinction matters:
+</p>
+
+<ul>
+  <li><strong>You don't build Canvas <em>instead of</em> your UI.</strong> You use
+      Canvas to figure out, test, and evolve the UI and the system
+      <em>before and during</em> building it.</li>
+  <li><strong>Canvas solves problems your final UI should never try to solve in a
+      visible way</strong> — agent coordination, intermediate state, test
+      validation, failure propagation. These are observability concerns, not
+      end-user features.</li>
+  <li><strong>Canvas is intended for test validation and the implementation of
+      agent-driven solutions</strong> — not for shipping a production control panel.</li>
+</ul>
+
+<p>
+A useful analogy: <strong>Figma is Human-to-Human</strong> — one person designs a
+static artifact for another person to read. <strong>Canvas is
+Human-to-AI-to-System</strong> — a shared surface where a human, an AI agent, and a
+<em>running</em> system all act on the same live model. Figma shows you a picture of
+the software. Canvas <em>is</em> a runtime where things actually execute.
+</p>
+
+<hr />
+
+<h2>2. The positioning, stated plainly</h2>
+
+<p>
+Here is the thesis the demo is built to prove:
+</p>
+
+<blockquote>
+Canvas redefines software development by shifting from writing static code to
+orchestrating living systems, where developers and AI co-create, observe, and evolve
+solutions in real time. Instead of building UIs for users, we build interactive
+environments for agents — turning debugging, testing, and execution into a
+continuous, visual feedback loop that accelerates innovation and brings ideas to
+production faster than ever.
+</blockquote>
+
+<p>
+Read that again with the demo in mind, because the demo is not a slide — it is a
+working Copilot CLI extension that renders exactly this loop.
+</p>
+
+<hr />
+
+<h2>3. What we built: the Agent Runtime canvas</h2>
+
+<p>
+<a href="https://github.com/leestott/ghcanvasdemo">ghcanvasdemo</a> is a GitHub
+Copilot CLI <strong>canvas extension</strong> called <strong>Agent Runtime</strong>.
+It turns Canvas into a runtime observability and control plane for a multi-agent
+software system that is being designed, tested, and evolved in real time.
+</p>
+
+<p>
+The canvas renders a single living <strong>SystemModel</strong> that
+<em>both humans and the AI agent edit at the same time</em>. The agent drives it
+through five canvas actions; the human drives it through panel controls. Every
+change streams to the iframe over Server-Sent Events (SSE), so the system visibly
+evolves through interaction.
+</p>
+
+<h3>The seven panels — a system you can watch think</h3>
+
+<table>
+  <tr><th>Panel</th><th>What it makes observable</th></tr>
+  <tr><td><strong>Requirement &amp; constraints</strong></td><td>The feature under design plus editable policies and constraints</td></tr>
+  <tr><td><strong>Agents</strong></td><td>Active agents, their responsibilities, and live state (idle / working / done / error / blocked)</td></tr>
+  <tr><td><strong>Task Flow</strong></td><td>The dependency graph of tasks across agents, with live status</td></tr>
+  <tr><td><strong>Artifacts</strong></td><td>The intermediate outputs each task emits</td></tr>
+  <tr><td><strong>Validation</strong></td><td>Test cases, pass/fail, expected vs. actual, and the reasoning behind each verdict</td></tr>
+  <tr><td><strong>Live State</strong></td><td>The shared memory objects the agents read and write — directly human-editable</td></tr>
+  <tr><td><strong>Timeline</strong></td><td>A change-over-time log, including before&rarr;after state diffs</td></tr>
+</table>
+
+<p>
+None of these are things you would put in front of an end user. <em>All</em> of them
+are things you desperately want to see while you and an AI are co-designing an
+agentic system.
+</p>
+
+<h3>The five agent actions</h3>
+
+<p>
+The AI co-creates and evolves the system by calling five actions, declared in the
+canvas extension:
+</p>
+
+<table>
+  <tr><th>Action</th><th>Effect</th></tr>
+  <tr><td><code>decompose_system</code></td><td>Break a requirement into collaborating agents + a task-flow graph</td></tr>
+  <tr><td><code>execute_workflow</code></td><td>Coordinate agents to advance tasks (<code>step</code> / <code>run</code> / <code>pause</code> / <code>resume</code> / <code>reset</code>)</td></tr>
+  <tr><td><code>validate_output</code></td><td>Run evaluation tests, return structured pass/fail + reasoning</td></tr>
+  <tr><td><code>update_system_design</code></td><td>Modify architecture/logic: requirement, constraints, agents, tasks</td></tr>
+  <tr><td><code>track_state</code></td><td>Persist/update a shared state object, recording the diff on the timeline</td></tr>
+</table>
+
+<p>
+The critical detail is that <strong>human controls and agent actions funnel through
+the exact same store</strong>. There is no separate "AI view" and "human view" — one
+model, two kinds of participant.
+</p>
+
+<hr />
+
+<h2>4. How it actually works (the parts that matter)</h2>
+
+<p>
+The extension is deliberately small and dependency-free. It uses only Node's
+built-in modules plus <code>@github/copilot-sdk</code>, which the CLI auto-resolves.
+Three files do the work:
+</p>
+
+<pre><code>.github/extensions/agent-runtime/
+  extension.mjs   # wiring: loopback HTTP server, SSE, /control, 5 canvas actions
+  store.mjs       # durable SystemModel + execution engine + validation
+  ui.mjs          # iframe renderer (system view, validation, state, timeline)
+</code></pre>
+
+<h3>One shared model, broadcast on every mutation</h3>
+
+<p>
+The heart of the demo is the <code>SystemStore</code>. It is an
+<code>EventEmitter</code>: every mutation bumps a version, appends a timeline entry,
+persists to disk, and broadcasts a fresh snapshot to all connected panels. This is
+the single line that makes "humans and AI edit the same live system" true rather
+than aspirational:
+</p>
+
+<pre><code>// store.mjs — every change is versioned, logged, persisted, and broadcast.
+_commit(eventType, summary, detail) {
+  this.model.version += 1;
+  this.model.updatedAt = now();
+  if (eventType) {
+    this.model.timeline.unshift({
+      id: uid("ev"), ts: now(), type: eventType, summary, detail: detail || null,
+    });
+    this.model.timeline = this.model.timeline.slice(0, 200);
+  }
+  this._queueSave();          // best-effort JSON persistence under ~/.copilot
+  this.emit("change", this.model);  // fan out to every SSE client
+  return this.model;
+}
+</code></pre>
+
+<h3>The agent action and the human button hit the same method</h3>
+
+<p>
+In <code>extension.mjs</code>, the canvas action handler and the iframe's
+<code>/control</code> POST both call <code>store.execute(...)</code>. That symmetry
+is the whole point — neither the human nor the AI is privileged:
+</p>
+
+<pre><code>// extension.mjs — a human control POST maps onto the same store method
+// the AI agent calls through the execute_workflow canvas action.
+function applyControl(store, body) {
+  switch (body.action) {
+    case "execute":  return store.execute(body.mode || "step", body);
+    case "validate": return store.validate(body.tests);
+    case "decompose":return store.decompose(body.requirement, body);
+    case "inject_failure": return store.injectFailure(body.taskKey);
+    case "edit_state":     return store.editState(body.key, body.value);
+    // ...requirement, constraints, clear_failures, update_design
+  }
+}
+</code></pre>
+
+<h3>Execution you can watch one task at a time</h3>
+
+<p>
+The engine advances the task graph through a visible
+<em>begin&rarr;dwell&rarr;finish</em> lifecycle so the active agent is always
+observable. A ready task is one whose dependencies are all <code>done</code>:
+</p>
+
+<pre><code>// store.mjs — the scheduler only starts a task when its deps are satisfied.
+_readyTask() {
+  return this.model.tasks.find(
+    (t) =>
+      t.status === "pending" &&
+      t.deps.every((d) => {
+        const dep = this.model.tasks.find((x) => x.id === d);
+        return dep && dep.status === "done";
+      }),
+  );
+}
+</code></pre>
+
+<p>
+When a task finishes, its agent emits an artifact and writes to shared state; when a
+dependency fails, the engine walks the graph to a fixpoint and marks every
+downstream task <code>blocked</code>. That is failure propagation you can
+<em>see</em> — exactly the kind of thing a production UI would (correctly) hide, and
+exactly the kind of thing you need exposed while designing the system.
+</p>
+
+<h3>Validation as a first-class, re-runnable citizen</h3>
+
+<p>
+The default evaluation suite asserts properties of the <em>running</em> system, not
+of static code — every test returns an expected value, an actual value, and a human
+-readable reason:
+</p>
+
+<pre><code>// store.mjs — tests assert properties of the live system model.
+_defaultTests() {
+  const t = (name, target, assertion) => ({ id: uid("test"), name, target, assertion });
+  return [
+    t("All tasks reach a terminal state", "tasks", "no_pending"),
+    t("No tasks failed", "tasks", "none_failed"),
+    t("Every completed task emitted an artifact", "artifacts", "artifact_per_done"),
+    t("Design state populated before build", "state", "design_before_build"),
+    t("Decision recorded by Reviewer", "state", "has_decision"),
+  ];
+}
+</code></pre>
+
+<p>
+This is the "continuous, visual feedback loop" from the thesis, made concrete:
+decompose &rarr; execute &rarr; validate &rarr; redesign &rarr; re-validate, with the
+Timeline recording every before&rarr;after transition.
+</p>
+
+<hr />
+
+<h2>5. Run it yourself</h2>
+
+<p>
+You need a <strong>GitHub Copilot CLI / app with canvas support</strong> (the
+<code>canvas-renderer</code> capability) and this repo opened as your workspace.
+There is no <code>npm install</code> — the SDK is auto-resolved and the extension
+uses only built-in Node modules.
+</p>
+
+<ol>
+  <li>
+    <strong>Clone and open the workspace.</strong>
+    <pre><code>git clone https://github.com/leestott/ghcanvasdemo.git
+cd ghcanvasdemo</code></pre>
+    The extension auto-discovers from <code>.github/extensions/agent-runtime/</code>.
+  </li>
+  <li>
+    <strong>Open the canvas with a requirement.</strong> Ask Copilot:
+    <blockquote>Open the Agent Runtime canvas with the requirement
+    "Add CSV export to the reports page".</blockquote>
+  </li>
+  <li>
+    <strong>Walk the loop.</strong> Decompose into five agents and a six-task graph,
+    press <strong>Run &#9654;</strong>, watch the spotlight track the active agent,
+    press <strong>Run tests &#10003;</strong> for 5/5 green, then
+    <strong>Inject failure &#9889;</strong> to watch downstream tasks go
+    <em>blocked</em> and validation drop to 4/5 — and recover.
+  </li>
+</ol>
+
+<p>
+State persists per <code>documentId</code> under
+<code>~/.copilot/extensions/agent-runtime/artifacts/</code>, so a reload resumes
+exactly where you left off. The companion
+<a href="https://github.com/leestott/ghcanvasdemo/blob/main/demoscript.md">demoscript.md</a>
+in the repo gives you a tight, timed walkthrough.
+</p>
+
+<hr />
+
+<h2>6. Why this is an observability story</h2>
+
+<p>
+Once you accept that Canvas is a runtime rather than a UI, the most compelling use
+case becomes <strong>observability of agentic systems</strong>. Agentic software is
+notoriously hard to debug: the interesting behavior lives in intermediate state,
+coordination order, and the moments where one agent's failure cascades into
+another's. A production UI is designed to <em>hide</em> all of that. A Canvas is
+designed to <em>surface</em> it — temporarily, while you are shaping the system —
+and then get out of the way.
+</p>
+
+<p>
+This reframes Canvas alongside the broader Microsoft and GitHub agent tooling story.
+As teams adopt the
+<a href="https://github.com/github/copilot-sdk">GitHub Copilot SDK</a> and patterns
+like the open
+<a href="https://modelcontextprotocol.io/">Model Context Protocol</a> to wire agents
+into real systems, the gap is rarely "can the agent act?" — it is "can a human
+<em>see</em> what the agent did, judge it, and steer it?" Canvas is a candidate
+answer to that second question. When you take agents toward production on Azure with
+services like
+<a href="https://learn.microsoft.com/azure/ai-foundry/">Azure AI Foundry</a>, the
+same instinct applies: build the evaluation and observability loop first, and let it
+shape the system before you commit a single end-user pixel.
+</p>
+
+<hr />
+
+<h2>7. The open question: why can't Canvas be multi-user?</h2>
+
+<p>
+There is an obvious next frontier, and it is worth stating as an honest open
+question rather than a finished feature. Everything that makes Canvas valuable also
+makes it a natural <em>collaborative</em> surface:
+</p>
+
+<ul>
+  <li>It is a <strong>shared space</strong>.</li>
+  <li>It is <strong>visual</strong>.</li>
+  <li>It is <strong>collaborative</strong>.</li>
+  <li>Multiple participants — <strong>human and AI</strong> — interact with the same
+      surface.</li>
+</ul>
+
+<p>
+If Figma earned its place by making Human-to-Human design multiplayer, the
+provocative question is whether a project- or repo-scoped Canvas can make
+Human-to-AI-to-System development multiplayer too: several engineers and several
+agents shaping one running system on one surface. The demo here is single-user by
+design, but its architecture — one shared store, versioned, broadcast to every
+subscriber — is already the shape you would need. That is a genuine research
+direction, and worth experimenting with as licensing and access broaden.
+</p>
+
+<hr />
+
+<h2>8. Honest limitations</h2>
+
+<p>
+In the spirit of building credibility rather than hype:
+</p>
+
+<ul>
+  <li><strong>This is a demonstration.</strong> The decomposition, artifacts, and
+      state are synthesized to make the runtime loop legible — it models an agentic
+      system rather than running arbitrary production agents.</li>
+  <li><strong>It is single-user and single-machine.</strong> The loopback HTTP server
+      and per-document store are local by design; multi-user is an aspiration, not a
+      shipped capability.</li>
+  <li><strong>Access is gated.</strong> Canvas support requires a Copilot
+      CLI/app build with the <code>canvas-renderer</code> capability. Licensing and
+      preview access are the biggest practical blockers to wider experimentation
+      today.</li>
+  <li><strong>Persistence is best-effort.</strong> State is written to a local JSON
+      artifact; treat it as demo durability, not a database.</li>
+</ul>
+
+<hr />
+
+<h2>Key takeaways</h2>
+
+<ul>
+  <li><strong>Don't build a UI in Canvas.</strong> Use Canvas to shape, test, and
+      evolve a system — and the UI — while it runs.</li>
+  <li><strong>Traditional UIs are for using software; Canvas is for shaping software
+      while it runs.</strong></li>
+  <li><strong>Canvas is Human-to-AI-to-System</strong>, a runtime where things
+      execute — not a static design surface.</li>
+  <li><strong>Its strongest use case is observability and validation</strong> of
+      agentic systems: surface the intermediate state your production UI should hide.</li>
+  <li><strong>The shared-model architecture</strong> — one versioned store broadcast
+      to every participant — is what makes human + AI co-editing real, and what hints
+      at a multi-user future.</li>
+</ul>
+
+<h2>Next steps</h2>
+
+<ul>
+  <li>Clone and run the demo:
+      <a href="https://github.com/leestott/ghcanvasdemo">github.com/leestott/ghcanvasdemo</a>.</li>
+  <li>Read the extension source under
+      <a href="https://github.com/leestott/ghcanvasdemo/tree/main/.github/extensions/agent-runtime"><code>.github/extensions/agent-runtime/</code></a>
+      — start with <code>store.mjs</code>.</li>
+  <li>Explore the building blocks: the
+      <a href="https://github.com/github/copilot-sdk">GitHub Copilot SDK</a>, the
+      <a href="https://modelcontextprotocol.io/">Model Context Protocol</a>, and
+      <a href="https://learn.microsoft.com/azure/ai-foundry/">Azure AI Foundry</a>
+      for taking agentic systems toward production.</li>
+  <li>Try the multi-user thought experiment: fork the store, add a second
+      subscriber, and ask what changes when two humans and two agents share one
+      surface.</li>
+</ul>
+
+</body>
