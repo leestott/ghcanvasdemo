@@ -1,7 +1,7 @@
 # Demo Script — Agent Runtime Canvas
 
 A tight, timed walkthrough for demoing the **Agent Runtime** canvas
-(`leestott/ghcanvasdemo`). Total runtime: **~8–10 minutes**.
+(`leestott/agent-runtime-canvas`). Total runtime: **~8–10 minutes**.
 
 **One-line thesis to open and close with:**
 > Traditional UIs are for *using* software. Canvas is for *shaping* software while
@@ -14,7 +14,7 @@ A tight, timed walkthrough for demoing the **Agent Runtime** canvas
 
 - [ ] **GitHub Copilot CLI / app with canvas support** (`canvas-renderer` capability).
 - [ ] This repo cloned and opened as the **workspace**:
-      `git clone https://github.com/leestott/ghcanvasdemo.git && cd ghcanvasdemo`
+      `git clone https://github.com/leestott/agent-runtime-canvas.git && cd agent-runtime-canvas`
 - [ ] No `npm install` needed — the SDK auto-resolves; the extension uses only Node
       built-ins.
 - [ ] Confirm the extension loaded: reload extensions and check that **Agent
@@ -165,4 +165,4 @@ Run tests &#10003;
 **Agent actions:** `decompose_system` · `execute_workflow` · `validate_output` ·
 `update_system_design` · `track_state`
 
-**Repo:** https://github.com/leestott/ghcanvasdemo
+**Repo:** https://github.com/leestott/agent-runtime-canvas
