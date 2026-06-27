@@ -1,0 +1,15 @@
+# Node / runtime
+node_modules/
+npm-debug.log*
+
+# Copilot extension runtime state (persisted system models)
+.runtime/
+*.local.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
