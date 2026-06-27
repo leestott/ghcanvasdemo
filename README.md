@@ -9,6 +9,10 @@ edit at the same time**. The agent drives it through five canvas actions; the hu
 drives it through the panel's controls. Every change streams to the iframe over
 Server-Sent Events, so the system visibly evolves through interaction.
 
+![The Agent Runtime canvas: top control bar (Step / Run / Pause / Inject failure / Clear failure / Reset), an activity-spotlight banner, and the Requirement, Constraints, and Agents panels.](canvas-demo.png)
+
+*The Agent Runtime canvas open beside the chat — control bar, activity spotlight, requirement & constraints, and the live agent roster.*
+
 ## What it demonstrates
 
 > Canvas is not a UI builder — it is a runtime for shaping intelligent systems.
